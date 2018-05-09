@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-# osascript -e 'display notification "😄 已清除Xcode编译缓存..." with title "来自 CleanMyMac"' 
-
 bytesToHuman() {
     b=${1:-0}; d=''; s=0; S=(Bytes {K,M,G,T,E,P,Y,Z}iB)
     while ((b > 1024)); do
@@ -9,8 +7,13 @@ bytesToHuman() {
         b=$((b / 1024))
         let s++
     done
-    echo "$b$d ${S[$s]} of space was cleaned up :3"
-    osascript -e 'display notification "缓存已经清除！" with title "来自 CleanMyMac"' 
+    result="$b$d ${S[$s]} of space was cleaned up :3"
+    noti="来自 CleanMyMac"
+    echo $result
+    # osascript -e "display notification \"$result\" with title \"$noti\""
+osascript << EOF
+    display notification "\"$result\"" with title "来自 CleanMyMac"
+EOF
 }
 
 oldAvailable=$(df / | tail -1 | awk '{print $4}')
