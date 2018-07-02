@@ -16,11 +16,20 @@ osascript << EOF
 EOF
 }
 
+##############################
+
+#
+brew update && brew upgrade && brew cu -a -y && mas upgrade
+
 oldAvailable=$(df / | tail -1 | awk '{print $4}')
 
+# 
 echo 'Cleanup XCode Derived Data and Archives...'
 rm -rf ~/Library/Developer/Xcode/DerivedData/* &>/dev/null
 rm -rf ~/Library/Developer/Xcode/Archives/* &>/dev/null
+
+#
+brew cleanup && brew cask cleanup
 
 clear && echo 'Success!'
 
