@@ -21,19 +21,26 @@ EOF
 #
 brew update && brew upgrade && brew cu -a -y && mas upgrade
 
+# <--------------------------
 oldAvailable=$(df / | tail -1 | awk '{print $4}')
 
-# 
+#
 echo 'Cleanup XCode Derived Data and Archives...'
 rm -rf ~/Library/Developer/Xcode/DerivedData/* &>/dev/null
 rm -rf ~/Library/Developer/Xcode/Archives/* &>/dev/null
 
-#
-brew cleanup && brew cask cleanup
+# Cleaning Up Homebrew.
+brew cleanup --force -s
+brew cask cleanup
+
+#Cleaning Up Ruby.
+printf "Cleanup up Ruby.\n"
+gem cleanup
 
 clear && echo 'Success!'
 
 newAvailable=$(df / | tail -1 | awk '{print $4}')
+# -------------------------->
 count=$((newAvailable-oldAvailable))
 count=$(( $count * 512))
 bytesToHuman $count
