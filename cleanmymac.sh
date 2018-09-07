@@ -30,8 +30,7 @@ rm -rf ~/Library/Developer/Xcode/DerivedData/* &>/dev/null
 rm -rf ~/Library/Developer/Xcode/Archives/* &>/dev/null
 
 # Cleaning Up Homebrew.
-brew cleanup --force -s
-brew cask cleanup
+brew cleanup
 
 #Cleaning Up Ruby.
 printf "Cleanup up Ruby.\n"
