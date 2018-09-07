@@ -2,5 +2,6 @@
 
 ### usage
 ```bash
-curl https://raw.githubusercontent.com/HeminWon/CleanMyMac/0.0.1-branch/cleanmymac.sh | sh
+curl https://raw.githubusercontent.com/HeminWon/CleanMyMac/develop/cleanmymac.sh | sh
 ```
+
