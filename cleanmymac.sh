@@ -1,5 +1,15 @@
 #!/usr/bin/env bash
 
+displayNotification() {
+    description="${1}"
+	title="${2}"
+    echo "$description - $title"
+    # osascript -e "display notification \"$description\" with title "\"$title\""
+osascript << EOF
+    display notification "\"$description\"" with title "\"$title\""
+EOF
+}
+
 bytesToHuman() {
     b=${1:-0}; d=''; s=0; S=(Bytes {K,M,G,T,E,P,Y,Z}iB)
     while ((b > 1024)); do
@@ -9,11 +19,7 @@ bytesToHuman() {
     done
     result="$b$d ${S[$s]} of space was cleaned up :3"
     noti="来自 CleanMyMac"
-    echo $result
-    # osascript -e "display notification \"$result\" with title \"$noti\""
-osascript << EOF
-    display notification "\"$result\"" with title "来自 CleanMyMac"
-EOF
+    displayNotification "$result" "$noti"
 }
 
 updateSoftware() {
