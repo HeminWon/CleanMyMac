@@ -16,10 +16,22 @@ osascript << EOF
 EOF
 }
 
+updateSoftware() {
+    echo "update software..."
+    brew update && brew upgrade && brew cu -a -y && mas upgrade
+}
+
 ##############################
 
 #
-brew update && brew upgrade && brew cu -a -y && mas upgrade
+while true; do
+    read -p "Do you wish to update all software? " yn
+    case $yn in
+        [yY][eE][sS]|[yY] ) updateSoftware; break;;
+        [nN][oO]|[nN] ) echo "keep software..."; break;;
+        * ) echo "Please answer yes or no.";;
+    esac
+done
 
 # <--------------------------
 oldAvailable=$(df / | tail -1 | awk '{print $4}')
