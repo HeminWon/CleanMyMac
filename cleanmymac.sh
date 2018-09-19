@@ -29,7 +29,7 @@ updateSoftware() {
 ##############################
 
 #
-SURETY="$(osascript -e 'display dialog "Are you sure you want to partition this disk?" buttons {"Yes", "No"} default button "No"')"
+SURETY="$(osascript -e 'display dialog "Do you wish to update all software?" buttons {"Yes", "No"} default button "No"')"
 
 if [ "$SURETY" = "button returned:Yes" ]; then
     echo "update software..."
