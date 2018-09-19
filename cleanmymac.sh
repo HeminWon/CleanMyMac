@@ -23,21 +23,20 @@ bytesToHuman() {
 }
 
 updateSoftware() {
-    echo "update software..."
     brew update && brew upgrade && brew cu -a -y && mas upgrade
 }
 
 ##############################
 
 #
-while true; do
-    read -p "Do you wish to update all software? " yn
-    case $yn in
-        [yY][eE][sS]|[yY] ) updateSoftware; break;;
-        [nN][oO]|[nN] ) echo "keep software..."; break;;
-        * ) echo "Please answer yes or no.";;
-    esac
-done
+SURETY=`$(osascript -e 'display dialog "Are you sure you want to partition this disk?" buttons {"Yes", "No"} default button "No"')`
+
+if [ "$SURETY" = "button returned:Yes" ]; then
+    echo "update software..."
+    updateSoftware
+else
+    echo "keep software..."
+fi
 
 # <--------------------------
 oldAvailable=$(df / | tail -1 | awk '{print $4}')
