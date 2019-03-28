@@ -12,4 +12,5 @@ curl https://raw.githubusercontent.com/HeminWon/CleanMyMac/develop/cleanmymac.sh
 - 清除XCode编译文件Derived Data 和 Archives；
 - 清理brew安装的所有的过时软件；
 - 清除所有已安装的老版本gem包；
-- 支持在清除之前先升级brew及gem。
+- 支持在清除之前先升级brew及gem，若要升级请点击YES。
+![update](https://github.com/HeminWon/CleanMyMac/blob/develop/rsc/update.png)
