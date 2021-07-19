@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+set -e
+# set -x
+
 displayNotification() {
     description="${1}"
 	title="${2}"
@@ -10,38 +13,99 @@ osascript << EOF
 EOF
 }
 
-bytesToHuman() {
-    b=${1:-0}; d=''; s=0; S=(Bytes {K,M,G,T,E,P,Y,Z}iB)
-    while ((b > 1024)); do
-        d="$(printf ".%02d" $((b % 1024 * 100 / 1024)))"
-        b=$((b / 1024))
-        let s++
-    done
-    result="$b$d ${S[$s]} of space was cleaned up :3"
+bytesToHumanReadable() {
+    bytes=`echo "${1}" | numfmt --to=iec`
+    result="$bytes of space was cleaned up :3"
     noti="来自 CleanMyMac"
     displayNotification "$result" "$noti"
 }
 
-updateSoftware() {
-    brew update && brew upgrade && brew cu -a -y && mas upgrade
+available () {
+    echo `df / | tail -1 | awk '{print $4}'`
 }
 
-##############################
+####
+updateBrew () {
+    echo "update brew"
+    brew update && brew upgrade && brew cu -a -y
+}
 
-#
-SURETY="$(osascript -e 'display dialog "Do you wish to update all software?" buttons {"Yes", "No"} default button "No"')"
+updateMas() {
+    echo "update mas"
+    mas upgrade
+}
 
-if [ "$SURETY" = "button returned:Yes" ]; then
-    echo "update software..."
-    updateSoftware
+clearCocoapods() {
+    echo "clean cocoapods"
+    pod cache clean --all
+}
+
+####
+display () {
+    effect="${1}"
+    text="${2}"
+    detailDes="Do you wish to $effect $text software?"
+osascript << EOF
+    display dialog "$detailDes" buttons {"Yes", "No"} default button "No"
+EOF
+}
+
+displayDialog () {
+    res=$(display "${1}" "${2}")
+    # echo $res
+    if [ "$res" = "button returned:Yes" ]; then
+        echo true
+    else
+        echo false
+    fi
+}
+
+displayUpdate () {
+    bool=$(displayDialog "update" "${1}")
+    if [[ "$bool" == true ]]; then
+        echo true
+    else
+        echo false
+    fi
+}
+
+displayClear () {
+    bool=$(displayDialog "clear" "${1}")
+    if [[ "$bool" == true ]]; then
+        echo true
+    else
+        echo false
+    fi
+}
+
+
+##############################update
+boolBrew=$(displayUpdate "brew")
+if [[ "$boolBrew" == true ]]; then
+    updateBrew
 else
-    echo "keep software..."
+    echo "keep brew"
 fi
 
-# <--------------------------
-oldAvailable=$(df / | tail -1 | awk '{print $4}')
+boolMas=$(displayUpdate "mas")
+if [[ "$boolMas" == true ]]; then
+    updateMas
+else
+    echo "keep mas"
+fi
 
-#
+##############################clear
+# <--------------------------
+oldAvailable=$(available)
+
+boolCocoapods=$(displayClear "cocoapods")
+if [[ "$boolMas" == true ]]; then
+    clearCocoapods
+else
+    echo "Don't clean up cocoapods"
+fi
+
+# xcode
 echo 'Cleanup XCode Derived Data and Archives...'
 rm -rf ~/Library/Developer/Xcode/DerivedData/* &>/dev/null
 rm -rf ~/Library/Developer/Xcode/Archives/* &>/dev/null
@@ -55,8 +119,7 @@ gem cleanup
 
 clear && echo 'Success!'
 
-newAvailable=$(df / | tail -1 | awk '{print $4}')
+newAvailable=$(available)
 # -------------------------->
 count=$((newAvailable-oldAvailable))
-count=$(( $count * 512))
-bytesToHuman $count
+bytesToHumanReadable $count
