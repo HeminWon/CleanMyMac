@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# https://brew.sh/
+# https://github.com/buo/homebrew-cask-upgrade
+
 set -e
 # set -x
 
@@ -38,6 +41,18 @@ updateMas() {
 clearCocoapods() {
     echo "clean cocoapods"
     pod cache clean --all
+}
+
+clearXcode() {
+    xcrun simctl delete unavailable
+    rm -rf ~/Library/Developer/Xcode/DerivedData/* &>/dev/null
+    rm -rf ~/Library/Developer/Xcode/Archives/* &>/dev/null
+    # rm -rf ~/Library/Developer/CoreSimulator/Devices/* &>/dev/null
+    rm -rf ~/Library/Developer/Xcode/Products/* &>/dev/null
+
+    cd ~/Library/Developer/Xcode/iOS\ DeviceSupport
+    ifile=`ls | sort -rV | head -n1`
+    ls | grep -v "${ifile}" | tr "\n" "\0" | xargs -0 rm -rf
 }
 
 ####
@@ -106,9 +121,8 @@ else
 fi
 
 # xcode
-echo 'Cleanup XCode Derived Data and Archives...'
-rm -rf ~/Library/Developer/Xcode/DerivedData/* &>/dev/null
-rm -rf ~/Library/Developer/Xcode/Archives/* &>/dev/null
+echo 'Cleanup Xcode'
+clearXcode
 
 # Cleaning Up Homebrew.
 brew cleanup
@@ -122,4 +136,5 @@ clear && echo 'Success!'
 newAvailable=$(available)
 # -------------------------->
 count=$((newAvailable-oldAvailable))
+count=$(( $count * 512))
 bytesToHumanReadable $count
