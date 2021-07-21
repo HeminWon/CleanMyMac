@@ -6,6 +6,17 @@
 set -e
 # set -x
 
+spin() {
+    while true; do
+        for j in '\' '|' '/' '-'
+        do
+            printf "\t%c%c%c%c%c ${1} %c%c%c%c%c\r" \
+            "$j" "$j" "$j" "$j" "$j" "$j" "$j" "$j" "$j" "$j"
+            sleep 0.1
+        done
+    done
+}
+
 displayNotification() {
     description="${1}"
 	title="${2}"
@@ -44,6 +55,7 @@ clearCocoapods() {
 }
 
 clearXcode() {
+    echo 'clean Xcode'
     xcrun simctl delete unavailable
     rm -rf ~/Library/Developer/Xcode/DerivedData/* &>/dev/null
     rm -rf ~/Library/Developer/Xcode/Archives/* &>/dev/null
@@ -53,6 +65,7 @@ clearXcode() {
     cd ~/Library/Developer/Xcode/iOS\ DeviceSupport
     ifile=`ls | sort -rV | head -n1`
     ls | grep -v "${ifile}" | tr "\n" "\0" | xargs -0 rm -rf
+    echo '\r\nclean Xcode finish'
 }
 
 ####
@@ -113,6 +126,7 @@ fi
 # <--------------------------
 oldAvailable=$(available)
 
+# cocoapods
 boolCocoapods=$(displayClear "cocoapods")
 if [[ "$boolMas" == true ]]; then
     clearCocoapods
@@ -121,10 +135,11 @@ else
 fi
 
 # xcode
-echo 'Cleanup Xcode'
+spin "xcode" & spinpid=$!
 clearXcode
+kill "$spinpid"
 
-# Cleaning Up Homebrew.
+# Homebrew.
 brew cleanup
 
 #Cleaning Up Ruby.
