@@ -114,7 +114,7 @@ fi
 oldAvailable=$(available)
 
 boolCocoapods=$(displayClear "cocoapods")
-if [[ "$boolMas" == true ]]; then
+if [[ "$boolCocoapods" == true ]]; then
     clearCocoapods
 else
     echo "Don't clean up cocoapods"
