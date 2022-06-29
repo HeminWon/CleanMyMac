@@ -5,7 +5,7 @@
 ### 使用方法 <font size="2"> 终端执行 </font></span>
 
 ```bash
-curl https://raw.githubusercontent.com/HeminWon/CleanMyMac/develop/cleanmymac.sh | sh
+curl https://raw.githubusercontent.com/HeminWon/CleanMyMac/arm/cleanmymac.sh | sh
 ```
 
 ### 功能

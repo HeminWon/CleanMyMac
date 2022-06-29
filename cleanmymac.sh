@@ -30,7 +30,7 @@ available () {
 ####
 updateBrew () {
     echo "update brew"
-    brew update && brew upgrade && brew cu -a -y
+    arch -arm64 brew update && arch -arm64 brew upgrade && arch -arm64 brew cu -a -y
 }
 
 updateMas() {
@@ -125,7 +125,7 @@ echo 'Cleanup Xcode'
 clearXcode
 
 # Cleaning Up Homebrew.
-brew cleanup
+arch -arm64 brew cleanup
 
 #Cleaning Up Ruby.
 printf "Cleanup up Ruby.\n"
