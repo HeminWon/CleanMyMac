@@ -12,7 +12,7 @@ A simple shell script to clean up the junk files generated during daily developm
 To execute the script, run the following command in your terminal:
 
 ```bash
-curl https://raw.githubusercontent.com/HeminWon/CleanMyMac/arm/cleanmymac.sh | sh
+curl https://raw.githubusercontent.com/HeminWon/CleanMyMac/main/cleanmymac.sh | sh
 ```
 
 ## Contribution
