@@ -55,6 +55,30 @@ clearXcode() {
     ls | grep -v "${ifile}" | xargs -I {} rm -rf "{}"
 }
 
+clearCache() {
+    echo "Cleaning cache directories..."
+    rm -rf ~/Library/Caches/*
+    rm -rf ~/Library/Application\ Support/*/Cache/*
+    rm -rf ~/Library/Containers/*/Data/Library/Caches/*
+    rm -rf ~/Library/Developer/Xcode/iOS\ Device\ Logs/*
+    rm -rf ~/Library/Developer/Xcode/DerivedData/*
+
+    echo "Cache directories cleaned."
+}
+
+clearLogs() {
+    echo "Cleaning application logs..."
+    rm -rf ~/Library/Logs/*
+    sudo rm -rf /Library/Logs/*
+    echo "Application logs cleaned."
+}
+
+clearTrash() {
+    echo "Emptying Trash..."
+    rm -rf ~/.Trash/*
+    echo "Trash emptied."
+}
+
 displayDialog() {
     local effect="${1}"
     local text="${2}"
@@ -98,6 +122,13 @@ main() {
     # Clean Xcode
     clearXcode
 
+    # Clean cache directories
+    clearCache
+
+    clearLogs
+
+    clearTrash
+    
     # Clean up Homebrew
     echo "Cleaning up Homebrew..."
     arch -arm64 brew cleanup

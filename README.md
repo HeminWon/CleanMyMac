@@ -1,16 +1,26 @@
 # CleanMyMac
 
-使用脚本清理mac日常开发工作产生的垃圾文件,避免因长期的使用导致过多垃圾文件堆积。
+A simple shell script to clean up the junk files generated during daily development work on macOS. Regularly using this script helps prevent excessive accumulation of unnecessary files over time.
 
-### 使用方法 <font size="2"> 终端执行 </font></span>
+## Features
+- **Clear Xcode Build Files**: Removes Derived Data and Archives to free up space.
+- **Cleanup Homebrew**: Uninstalls all outdated software installed via Homebrew.
+- **Clear Old Gem Versions**: Removes all previously installed versions of Ruby gems.
+- **Upgrade Before Cleanup**: Prompts to upgrade Homebrew and Ruby gems before cleaning. Click "YES" to proceed with the upgrades.
+
+## Usage
+To execute the script, run the following command in your terminal:
 
 ```bash
 curl https://raw.githubusercontent.com/HeminWon/CleanMyMac/arm/cleanmymac.sh | sh
 ```
 
-### 功能
-- 清除XCode编译文件Derived Data 和 Archives；
-- 清理brew安装的所有的过时软件；
-- 清除所有已安装的老版本gem包；
-- 支持在清除之前先升级brew及gem，若要升级请点击YES。
-![update](https://github.com/HeminWon/CleanMyMac/blob/develop/rsc/update.png)
+## Contribution
+We welcome contributions! If you have suggestions for improvements or new features, feel free to submit a Merge Request (MR).
+
+## Issues
+If you encounter any bugs or have questions about the script, please open an issue in the repository. Your feedback is greatly appreciated!
+
+## License
+This project is licensed under the MIT License. See the [LICENSE](./LICENSE) file for details.
+
