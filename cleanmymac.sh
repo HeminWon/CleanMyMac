@@ -120,10 +120,18 @@ main() {
     fi
 
     # Clean Xcode
-    clearXcode
+    if shouldProceed "clear" "xcode"; then
+        clearXcode
+    else 
+        echo "Don't clean up Xcode"
+    fi
 
     # Clean cache directories
-    clearCache
+    if shouldProceed "cache" "xcode"; then 
+        clearCache
+    else 
+       echo "Don't clean up cache" 
+    fi
 
     clearLogs
 
