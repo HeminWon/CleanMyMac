@@ -29,7 +29,9 @@ available() {
 
 updateBrew() {
     echo "Updating Homebrew..."
-    arch -arm64 brew update && arch -arm64 brew upgrade && arch -arm64 brew cu -a -y
+    arch -arm64 brew update && \
+    arch -arm64 brew upgrade && \
+    arch -arm64 brew upgrade --cask --greedy
 }
 
 updateMas() {
