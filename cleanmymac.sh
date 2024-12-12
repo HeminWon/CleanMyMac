@@ -10,14 +10,14 @@ displayNotification() {
     local description="${1}"
     local title="${2}"
     echo "$description - $title"
-    osascript << EOF
+    osascript <<EOF
     display notification "$description" with title "$title"
 EOF
 }
 
 bytesToHumanReadable() {
     local bytes
-    bytes=$(numfmt --to=iec <<< "${1}")
+    bytes=$(numfmt --to=iec <<<"${1}")
     local result="$bytes of space was cleaned up :3"
     local noti="来自 CleanMyMac"
     displayNotification "$result" "$noti"
@@ -29,7 +29,9 @@ available() {
 
 updateBrew() {
     echo "Updating Homebrew..."
-    arch -arm64 brew update && arch -arm64 brew upgrade && arch -arm64 brew cu -a -y
+    arch -arm64 brew update &&
+        arch -arm64 brew upgrade &&
+        arch -arm64 brew upgrade --cask --greedy
 }
 
 updateMas() {
@@ -83,7 +85,7 @@ displayDialog() {
     local effect="${1}"
     local text="${2}"
     local detailDes="Do you wish to ${effect} ${text} software?"
-    osascript << EOF
+    osascript <<EOF
     display dialog "$detailDes" buttons {"Yes", "No"} default button "No"
 EOF
 }
@@ -104,7 +106,7 @@ main() {
         echo "Keeping brew"
     fi
 
-    if shouldProceed "update" "mas"; then
+    if shouldProceed "update" "AppStore"; then
         updateMas
     else
         echo "Keeping mas"
@@ -122,21 +124,21 @@ main() {
     # Clean Xcode
     if shouldProceed "clear" "xcode"; then
         clearXcode
-    else 
+    else
         echo "Don't clean up Xcode"
     fi
 
     # Clean cache directories
-    if shouldProceed "cache" "xcode"; then 
+    if shouldProceed "clean cache of" "xcode"; then
         clearCache
-    else 
-       echo "Don't clean up cache" 
+    else
+        echo "Don't clean up cache"
     fi
 
     clearLogs
 
     clearTrash
-    
+
     # Clean up Homebrew
     echo "Cleaning up Homebrew..."
     arch -arm64 brew cleanup
