@@ -115,10 +115,12 @@ main() {
     ############################## Clear
     oldAvailable=$(available)
 
-    if shouldProceed "clear" "cocoapods"; then
-        clearCocoapods
-    else
-        echo "Don't clean up CocoaPods"
+    if type "pod" > /dev/null 2>&1; then
+        if shouldProceed "clear" "cocoapods"; then
+            clearCocoapods
+        else
+            echo "Don't clean up CocoaPods"
+        fi
     fi
 
     # Clean Xcode
