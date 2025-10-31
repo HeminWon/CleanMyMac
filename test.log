@@ -1,0 +1,33 @@
+=========================================
+  CleanMyMac - Startup
+=========================================
+
+Checking dependencies...
+
+=========================================
+  Step 1: Software Updates
+=========================================
+Skipped Homebrew update
+Skipped Mac App Store update
+
+=========================================
+  Step 2: Cleaning Caches and Logs
+=========================================
+Available space before cleaning: 257.49GB
+
+Skipped CocoaPods cleaning
+Skipped Xcode cleaning
+Skipped system cache cleaning
+Skipped log cleaning
+Skipped emptying Trash
+Skipped Homebrew cleaning
+Skipped Ruby gems cleaning
+
+=========================================
+  Cleaning Completed!
+=========================================
+Available space after cleaning: 257.49GB
+1.95MB of space was cleaned up :3 - CleanMyMac
+Successfully freed: 0.00GB
+
+All operations completed!
