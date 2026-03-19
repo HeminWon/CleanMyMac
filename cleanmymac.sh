@@ -21,13 +21,12 @@ checkCommand() {
     return 0
 }
 
-# 显示 macOS 系统通知
+# 显示 macOS 系统通知（仅弹窗，不重复打印到终端）
 # 参数1: 通知内容描述
 # 参数2: 通知标题
 displayNotification() {
     local description="${1}"
     local title="${2}"
-    echo "$description - $title"
     osascript <<EOF
     display notification "$description" with title "$title"
 EOF
@@ -43,11 +42,11 @@ bytesToHumanReadable() {
     if [ "$bytes" -lt 1024 ]; then
         result="${bytes}B"
     elif [ "$bytes" -lt $((1024 * 1024)) ]; then
-        result=$(awk "BEGIN {printf \"%.2fKB\", $bytes/1024}")
+        result=$(awk -v b="$bytes" 'BEGIN {printf "%.2fKB", b/1024}')
     elif [ "$bytes" -lt $((1024 * 1024 * 1024)) ]; then
-        result=$(awk "BEGIN {printf \"%.2fMB\", $bytes/1024/1024}")
+        result=$(awk -v b="$bytes" 'BEGIN {printf "%.2fMB", b/1024/1024}')
     else
-        result=$(awk "BEGIN {printf \"%.2fGB\", $bytes/1024/1024/1024}")
+        result=$(awk -v b="$bytes" 'BEGIN {printf "%.2fGB", b/1024/1024/1024}')
     fi
 
     local message="$result of space was cleaned up :3"
@@ -90,17 +89,104 @@ clearCocoapods() {
     pod cache clean --all
 }
 
-# 清理 Xcode 相关文件和缓存
-clearXcode() {
-    echo "Cleaning Xcode..."
+# 清理 Xcode 模拟器（不可用设备 + 老版本运行时）
+# 先列出即将清理项，再询问确认，确认后才执行删除
+clearXcodeSimulators() {
+    echo "Checking Xcode simulators (unavailable devices + old runtimes)..."
 
-    # 删除不可用的模拟器
-    xcrun simctl delete unavailable 2>/dev/null || echo "  Skip: No unavailable simulators"
+    local unavailable_output
+    unavailable_output=$(xcrun simctl list devices unavailable 2>/dev/null || true)
+    local has_unavailable=0
+    if echo "$unavailable_output" | grep -qE '[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}'; then
+        has_unavailable=1
+    fi
 
-    # 清理 DerivedData（编译产生的中间文件）
+    # 老版本运行时：按平台+版本号排序，只保留每类最新版本号一条，其余待删
+    local to_delete=""
+    if xcrun simctl runtime list &>/dev/null; then
+        local keep_per_platform=1
+        local full_list
+        full_list=$(xcrun simctl runtime list 2>/dev/null | awk '
+            /^(iOS|watchOS|tvOS) [0-9]/ { print $1, $2, $5 }
+        ' | sort -k1,1 -k2,2V)
+        to_delete=$(echo "$full_list" | awk -v keep="$keep_per_platform" '
+            { key=$1; count[key]++; line[key,count[key]]=$0 }
+            END {
+                for (p in count) {
+                    for (i=1; i<=count[p]; i++) {
+                        if (i <= count[p] - keep) print line[p,i]
+                    }
+                }
+            }
+        ')
+    fi
+
+    # 无任何可清理项时直接退出
+    if [ "$has_unavailable" -eq 0 ] && [ -z "$to_delete" ]; then
+        echo "  Nothing to clean (no unavailable devices, no old runtimes)"
+        return
+    fi
+
+    # 先输出即将清理的内容，再确认
+    echo "  The following will be removed:"
+    if [ "$has_unavailable" -eq 1 ]; then
+        echo "  Unavailable devices (invalid after Xcode upgrade):"
+        echo "$unavailable_output" | sed 's/^/    /'
+    fi
+    if [ -n "$to_delete" ]; then
+        echo "  Old runtimes (keeping latest per platform):"
+        echo "$to_delete" | while read -r platform version _uuid; do
+            echo "    - $platform $version"
+        done
+    fi
+    echo ""
+    echo -n "  Proceed to delete the above? [y/N] "
+    read -r answer
+    if [[ ! "$answer" =~ ^[Yy]$ ]]; then
+        echo "  Skipped"
+        return
+    fi
+
+    echo "Cleaning Xcode simulators..."
+    if [ "$has_unavailable" -eq 1 ]; then
+        xcrun simctl delete unavailable 2>/dev/null || true
+        echo "  Removed unavailable devices"
+    fi
+    if [ -n "$to_delete" ]; then
+        echo "$to_delete" | while read -r platform version uuid; do
+            echo "    Deleting: $platform $version"
+            xcrun simctl runtime delete "$uuid" 2>/dev/null || true
+        done
+        echo "  Removed old simulator runtimes"
+    fi
+}
+
+# 清理 Xcode 缓存与构建产物（DerivedData、Archives、设备支持等）
+clearXcodeCaches() {
+    echo "Cleaning Xcode caches & build artifacts..."
+
+    # 清理 DerivedData（构建产物 + 索引数据，含编译中间文件、代码索引、Module 缓存等，体积常达数十 GB）
     if [ -d ~/Library/Developer/Xcode/DerivedData ]; then
         find ~/Library/Developer/Xcode/DerivedData -mindepth 1 -delete 2>/dev/null
-        echo "  Cleaned DerivedData"
+        echo "  Cleaned DerivedData (build + index)"
+    fi
+
+    # 清理 Xcode 应用缓存（预览、符号等，可安全重建）
+    if [ -d ~/Library/Caches/com.apple.dt.Xcode ]; then
+        find ~/Library/Caches/com.apple.dt.Xcode -mindepth 1 -delete 2>/dev/null
+        echo "  Cleaned Xcode app cache"
+    fi
+
+    # 清理文档索引（Documentation 索引，下次打开文档会重建）
+    if [ -d ~/Library/Developer/Xcode/UserData/DocumentationIndex ]; then
+        rm -rf ~/Library/Developer/Xcode/UserData/DocumentationIndex 2>/dev/null
+        echo "  Cleaned DocumentationIndex"
+    fi
+
+    # 清理编辑器交互历史缓存（跳转/补全等历史，可安全删除）
+    if [ -d ~/Library/Developer/Xcode/UserData/IDEEditorInteractivityHistory ]; then
+        find ~/Library/Developer/Xcode/UserData/IDEEditorInteractivityHistory -mindepth 1 -delete 2>/dev/null
+        echo "  Cleaned IDEEditorInteractivityHistory"
     fi
 
     # 清理 Archives（归档文件）
@@ -211,7 +297,7 @@ clearLogs() {
            sudo find /Library/Logs -type d -empty -delete 2>/dev/null; then
             echo "  Cleaned system logs"
         else
-            echo "  Warning: Skipped system logs cleaning (requires admin privileges or error occurred)"
+            echo "  Warning: Skipped system logs (admin required or error occurred)"
         fi
     fi
 
@@ -231,30 +317,14 @@ clearTrash() {
     fi
 }
 
-# 显示确认对话框
-# 参数1: 操作动作（如 "update"、"clean"）
-# 参数2: 操作对象（如 "brew"、"xcode"）
-displayDialog() {
-    local action="${1}"
-    local target="${2}"
-    local question="Do you wish to ${action} ${target}?"
-
-    osascript <<EOF
-    display dialog "$question" buttons {"Yes", "No"} default button "No"
-EOF
-}
-
-# 判断用户是否选择继续操作
-# 参数1: 操作动作
-# 参数2: 操作对象
-# 返回: 0=继续, 1=跳过
-shouldProceed() {
-    local action="${1}"
-    local name="${2}"
-    local response
-
-    response=$(displayDialog "$action" "$name")
-    [[ "$response" == "button returned:Yes" ]]
+# 终端内 y/n 确认（不弹窗）
+# 参数1: 提示文案，如 "Update Homebrew? [y/N] "
+# 返回: 0=选 y 继续, 非0=跳过
+confirm() {
+    local prompt="${1}"
+    echo -n "  $prompt"
+    read -r answer
+    [[ "$answer" =~ ^[Yy]$ ]]
 }
 
 # 主函数入口
@@ -283,6 +353,7 @@ main() {
         pod_available=true
     fi
 
+    echo "  Detected: Homebrew $([ "$brew_available" = true ] && echo '✓' || echo '–'), mas $([ "$mas_available" = true ] && echo '✓' || echo '–'), CocoaPods $([ "$pod_available" = true ] && echo '✓' || echo '–')"
     echo ""
 
     # 软件更新
@@ -292,7 +363,7 @@ main() {
 
     # 更新 Homebrew
     if $brew_available; then
-        if shouldProceed "update" "Homebrew"; then
+        if confirm "Update Homebrew? [y/N] "; then
             updateBrew
         else
             echo "Skipped Homebrew update"
@@ -301,7 +372,7 @@ main() {
 
     # 更新 Mac App Store 应用
     if $mas_available; then
-        if shouldProceed "update" "Mac App Store apps"; then
+        if confirm "Update Mac App Store apps? [y/N] "; then
             updateMas
         else
             echo "Skipped Mac App Store update"
@@ -317,41 +388,44 @@ main() {
 
     # 记录清理前的可用空间（单位：KB）
     oldAvailable=$(available)
-    echo "Available space before cleaning: $(awk "BEGIN {printf \"%.2fGB\", $oldAvailable/1024/1024}")"
+    echo "Available space before cleaning: $(awk -v k="$oldAvailable" 'BEGIN {printf "%.2f", k/1024/1024}') GB"
     echo ""
 
     # 清理 CocoaPods 缓存
     if $pod_available; then
-        if shouldProceed "clean" "CocoaPods cache"; then
+        if confirm "Clean CocoaPods cache? [y/N] "; then
             clearCocoapods
         else
             echo "Skipped CocoaPods cleaning"
         fi
     fi
 
-    # 清理 Xcode
-    if shouldProceed "clean" "Xcode cache"; then
-        clearXcode
+    # 清理 Xcode 缓存与构建产物（DerivedData、Archives 等）
+    if confirm "Clean Xcode caches & build artifacts (DerivedData, Archives, etc.)? [y/N] "; then
+        clearXcodeCaches
     else
-        echo "Skipped Xcode cleaning"
+        echo "Skipped Xcode caches cleaning"
     fi
 
+    # 清理 Xcode 模拟器（先检查并列出即将清理项，再询问确认）
+    clearXcodeSimulators
+
     # 清理系统缓存
-    if shouldProceed "clean" "system cache"; then
+    if confirm "Clean system cache? [y/N] "; then
         clearCache
     else
         echo "Skipped system cache cleaning"
     fi
 
     # 清理日志文件
-    if shouldProceed "clean" "log files"; then
+    if confirm "Clean log files? [y/N] "; then
         clearLogs
     else
         echo "Skipped log cleaning"
     fi
 
     # 清空废纸篓
-    if shouldProceed "empty" "Trash"; then
+    if confirm "Empty Trash? [y/N] "; then
         clearTrash
     else
         echo "Skipped emptying Trash"
@@ -359,7 +433,7 @@ main() {
 
     # 清理 Homebrew 缓存
     if $brew_available; then
-        if shouldProceed "clean" "Homebrew cache"; then
+        if confirm "Clean Homebrew cache? [y/N] "; then
             echo "Cleaning Homebrew..."
 
             # 检测系统架构
@@ -377,7 +451,7 @@ main() {
 
     # 清理 Ruby gems
     if checkCommand "gem" "RubyGems"; then
-        if shouldProceed "clean" "Ruby gems cache"; then
+        if confirm "Clean Ruby gems cache? [y/N] "; then
             echo "Cleaning Ruby gems..."
             gem cleanup
             echo "Ruby gems cleaning completed"
@@ -393,20 +467,16 @@ main() {
     echo "  Cleaning Completed!"
     echo "========================================="
 
-    # 获取清理后的可用空间（单位：KB）
     newAvailable=$(available)
-    echo "Available space after cleaning: $(awk "BEGIN {printf \"%.2fGB\", $newAvailable/1024/1024}")"
-
-    # 计算释放的空间（KB 转换为字节）
     freedSpace=$((newAvailable - oldAvailable))
     freedBytes=$((freedSpace * 1024))
 
-    # 显示释放空间的通知
+    echo "Available space after cleaning: $(awk -v k="$newAvailable" 'BEGIN {printf "%.2f", k/1024/1024}') GB"
     if [ "$freedBytes" -gt 0 ]; then
+        echo "Freed: $(awk -v b="$freedBytes" 'BEGIN {printf "%.2f", b/1024/1024/1024}') GB"
         bytesToHumanReadable "$freedBytes"
-        echo "Successfully freed: $(awk "BEGIN {printf \"%.2fGB\", $freedBytes/1024/1024/1024}")"
     else
-        echo "No space freed (disk might be full or cleaning items were empty)"
+        echo "Freed: 0 GB (no cleanup ran or disk full)"
     fi
 
     echo ""
