@@ -141,7 +141,7 @@ clearXcodeSimulators() {
     fi
     echo ""
     echo -n "  Proceed to delete the above? [y/N] "
-    read -r answer
+    read -r answer </dev/tty
     if [[ ! "$answer" =~ ^[Yy]$ ]]; then
         echo "  Skipped"
         return
@@ -323,7 +323,7 @@ clearTrash() {
 confirm() {
     local prompt="${1}"
     echo -n "  $prompt"
-    read -r answer
+    read -r answer </dev/tty
     [[ "$answer" =~ ^[Yy]$ ]]
 }
 
