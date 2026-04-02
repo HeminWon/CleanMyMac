@@ -90,7 +90,7 @@ clearCocoapods() {
 }
 
 # 清理 Xcode 模拟器（不可用设备 + 老版本运行时）
-# 先列出即将清理项，再询问确认，确认后才执行删除
+# 先完整输出 runtime 列表，再逐条询问老版本是否删除
 clearXcodeSimulators() {
     echo "Checking Xcode simulators (unavailable devices + old runtimes)..."
 
@@ -102,14 +102,14 @@ clearXcodeSimulators() {
     fi
 
     # 老版本运行时：按平台+版本号排序，只保留每类最新版本号一条，其余待删
-    local to_delete=""
+    local old_runtimes=""
     if xcrun simctl runtime list &>/dev/null; then
         local keep_per_platform=1
         local full_list
         full_list=$(xcrun simctl runtime list 2>/dev/null | awk '
             /^(iOS|watchOS|tvOS) [0-9]/ { print $1, $2, $5 }
         ' | sort -k1,1 -k2,2V)
-        to_delete=$(echo "$full_list" | awk -v keep="$keep_per_platform" '
+        old_runtimes=$(echo "$full_list" | awk -v keep="$keep_per_platform" '
             { key=$1; count[key]++; line[key,count[key]]=$0 }
             END {
                 for (p in count) {
@@ -122,43 +122,87 @@ clearXcodeSimulators() {
     fi
 
     # 无任何可清理项时直接退出
-    if [ "$has_unavailable" -eq 0 ] && [ -z "$to_delete" ]; then
+    if [ "$has_unavailable" -eq 0 ] && [ -z "$old_runtimes" ]; then
         echo "  Nothing to clean (no unavailable devices, no old runtimes)"
         return
     fi
 
-    # 先输出即将清理的内容，再确认
-    echo "  The following will be removed:"
+    # 先完整输出当前所有 runtime，让用户看全貌
+    echo ""
+    echo "  Current simulator runtimes:"
+    xcrun simctl runtime list 2>/dev/null | sed 's/^/    /'
+    echo ""
+
+    # 处理不可用设备（一次性确认）
     if [ "$has_unavailable" -eq 1 ]; then
         echo "  Unavailable devices (invalid after Xcode upgrade):"
         echo "$unavailable_output" | sed 's/^/    /'
-    fi
-    if [ -n "$to_delete" ]; then
-        echo "  Old runtimes (keeping latest per platform):"
-        echo "$to_delete" | while read -r platform version _uuid; do
-            echo "    - $platform $version"
-        done
-    fi
-    echo ""
-    echo -n "  Proceed to delete the above? [y/N] "
-    read -r answer </dev/tty
-    if [[ ! "$answer" =~ ^[Yy]$ ]]; then
-        echo "  Skipped"
-        return
+        echo ""
+        echo -n "  Delete all unavailable devices? [y/N] "
+        read -r answer </dev/tty
+        if [[ "$answer" =~ ^[Yy]$ ]]; then
+            xcrun simctl delete unavailable 2>/dev/null || true
+            echo "  Removed unavailable devices"
+        else
+            echo "  Skipped unavailable devices"
+        fi
+        echo ""
     fi
 
-    echo "Cleaning Xcode simulators..."
-    if [ "$has_unavailable" -eq 1 ]; then
-        xcrun simctl delete unavailable 2>/dev/null || true
-        echo "  Removed unavailable devices"
+    # 逐条确认老版本 runtime
+    if [ -n "$old_runtimes" ]; then
+        echo "  Old runtimes (latest per platform is kept automatically):"
+        echo ""
+
+        local total
+        total=$(echo "$old_runtimes" | wc -l | tr -d ' ')
+        local idx=0
+
+        while IFS= read -r entry; do
+            [ -z "$entry" ] && continue
+            idx=$((idx + 1))
+
+            local platform version uuid
+            platform=$(echo "$entry" | awk '{print $1}')
+            version=$(echo "$entry" | awk '{print $2}')
+            uuid=$(echo "$entry" | awk '{print $3}')
+
+            # 尝试获取 runtime 大小
+            local size_str=""
+            local runtime_path
+            runtime_path=$(xcrun simctl runtime list -j 2>/dev/null | \
+                python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+for r in data.get('runtimes', []):
+    if r.get('identifier','').endswith('$uuid') or r.get('bundlePath',''):
+        bp = r.get('bundlePath','') or r.get('runtimeRoot','')
+        if bp:
+            print(bp)
+            break
+" 2>/dev/null || true)
+            if [ -n "$runtime_path" ] && [ -d "$runtime_path" ]; then
+                size_str=$(du -sh "$runtime_path" 2>/dev/null | awk '{print $1}')
+            fi
+
+            if [ -n "$size_str" ]; then
+                echo "  [$idx/$total] $platform $version  ($size_str)"
+            else
+                echo "  [$idx/$total] $platform $version"
+            fi
+            echo -n "  Delete? [y/N] "
+            read -r answer </dev/tty
+            if [[ "$answer" =~ ^[Yy]$ ]]; then
+                xcrun simctl runtime delete "$uuid" 2>/dev/null || true
+                echo "  Deleted $platform $version"
+            else
+                echo "  Kept $platform $version"
+            fi
+            echo ""
+        done <<< "$old_runtimes"
     fi
-    if [ -n "$to_delete" ]; then
-        echo "$to_delete" | while read -r platform version uuid; do
-            echo "    Deleting: $platform $version"
-            xcrun simctl runtime delete "$uuid" 2>/dev/null || true
-        done
-        echo "  Removed old simulator runtimes"
-    fi
+
+    echo "Xcode simulator cleanup done"
 }
 
 # 清理 Xcode 缓存与构建产物（DerivedData、Archives、设备支持等）
@@ -243,7 +287,7 @@ clearCache() {
 
     # 清理应用支持文件中的缓存
     if [ -d ~/Library/Application\ Support ]; then
-        find ~/Library/Application\ Support -type d -name "Cache" -exec rm -rf {} + 2>/dev/null
+        find ~/Library/Application\ Support -type d -name "Cache" -exec rm -rf {} + 2>/dev/null || true
         echo "  Cleaned application caches"
     fi
 
