@@ -280,8 +280,8 @@ clearCache() {
     # 清理用户缓存
     if [ -d ~/Library/Caches ]; then
         # 使用 find 命令，更可靠地删除缓存文件
-        find ~/Library/Caches -type f -delete 2>/dev/null
-        find ~/Library/Caches -type d -empty -delete 2>/dev/null
+        find ~/Library/Caches -type f -delete 2>/dev/null || true
+        find ~/Library/Caches -type d -empty -delete 2>/dev/null || true
         echo "  Cleaned user caches"
     fi
 
@@ -293,21 +293,21 @@ clearCache() {
 
     # 清理容器应用的缓存
     if [ -d ~/Library/Containers ]; then
-        find ~/Library/Containers -type d -path "*/Data/Library/Caches/*" -delete 2>/dev/null
+        find ~/Library/Containers -type d -path "*/Data/Library/Caches/*" -delete 2>/dev/null || true
         echo "  Cleaned container caches"
     fi
 
     # 清理 iOS 设备日志
     if [ -d ~/Library/Developer/Xcode/iOS\ Device\ Logs ]; then
-        find ~/Library/Developer/Xcode/iOS\ Device\ Logs -type f -delete 2>/dev/null
-        find ~/Library/Developer/Xcode/iOS\ Device\ Logs -type d -empty -delete 2>/dev/null
+        find ~/Library/Developer/Xcode/iOS\ Device\ Logs -type f -delete 2>/dev/null || true
+        find ~/Library/Developer/Xcode/iOS\ Device\ Logs -type d -empty -delete 2>/dev/null || true
         echo "  Cleaned iOS device logs"
     fi
 
     # 清理 Xcode DerivedData（如果之前没清理过）
     if [ -d ~/Library/Developer/Xcode/DerivedData ]; then
-        find ~/Library/Developer/Xcode/DerivedData -type f -delete 2>/dev/null
-        find ~/Library/Developer/Xcode/DerivedData -type d -empty -delete 2>/dev/null
+        find ~/Library/Developer/Xcode/DerivedData -type f -delete 2>/dev/null || true
+        find ~/Library/Developer/Xcode/DerivedData -type d -empty -delete 2>/dev/null || true
         echo "  Cleaned Xcode DerivedData"
     fi
 
@@ -322,8 +322,8 @@ clearLogs() {
     if [ -d ~/Library/Logs ]; then
         # 使用 find 命令递归删除所有文件，更可靠
         # -type f 只删除文件，-type d 删除空目录
-        find ~/Library/Logs -type f -delete 2>/dev/null
-        find ~/Library/Logs -type d -empty -delete 2>/dev/null
+        find ~/Library/Logs -type f -delete 2>/dev/null || true
+        find ~/Library/Logs -type d -empty -delete 2>/dev/null || true
         echo "  Cleaned user logs"
     fi
 
@@ -517,10 +517,14 @@ main() {
 
     echo "Available space after cleaning: $(awk -v k="$newAvailable" 'BEGIN {printf "%.2f", k/1024/1024}') GB"
     if [ "$freedBytes" -gt 0 ]; then
-        echo "Freed: $(awk -v b="$freedBytes" 'BEGIN {printf "%.2f", b/1024/1024/1024}') GB"
+        if [ "$freedBytes" -lt $((1024 * 1024 * 1024)) ]; then
+            echo "Freed: $(awk -v b="$freedBytes" 'BEGIN {printf "%.2f", b/1024/1024}') MB"
+        else
+            echo "Freed: $(awk -v b="$freedBytes" 'BEGIN {printf "%.2f", b/1024/1024/1024}') GB"
+        fi
         bytesToHumanReadable "$freedBytes"
     else
-        echo "Freed: 0 GB (no cleanup ran or disk full)"
+        echo "Freed: 0 B (no cleanup ran or disk full)"
     fi
 
     echo ""
