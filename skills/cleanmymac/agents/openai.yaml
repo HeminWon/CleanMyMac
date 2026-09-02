@@ -1,0 +1,3 @@
+interface:
+  display_name: "CleanMyMac"
+  short_description: "Maintain safe macOS developer environments"
